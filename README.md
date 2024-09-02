@@ -1,3 +1,44 @@
+##  **Spot Locater**
+Spot Locater is a dynamic web application built with React that allows users to search for any city and discover the top 10 tourist spots. The application features an interactive world map powered by Leaflet, which zooms into the searched location, providing a rich and engaging user experience. Users are presented with a visually appealing interface, including animated transitions, pop-up displays, and background images of the searched city, fetched directly from Unsplash.
+
+## Features
+-> Interactive World Map: An animated world map that zooms in on the searched city, providing a geographical context for the tourist spots.
+-> Tourist Spot Discovery: Fetches and displays the top 10 tourist spots of a city, complete with descriptions and ratings, using the OpenTripMap API.
+-> Dynamic UI Elements: A search bar that smoothly transitions to the top of the page after searching, and dual pop-up containers that showcase both the map and tourist spots side by side.
+-> Background Imagery: City-specific background images are fetched from Unsplash, with a seamless blend into the map, enhancing the visual appeal of the application.
+-> Responsive Design: Fully responsive design, ensuring a smooth experience across devices.
+
+## Technologies Used
+-> React: For building the user interface and managing state.
+-> Leaflet: For interactive map rendering and location zoom functionality.
+> OpenTripMap API: To retrieve city coordinates and top tourist spots.
+-> Unsplash API: To fetch high-quality images of the searched city.
+-> CSS: Custom styling for a modern, clean, and responsive design.
+
+## Installation
+Clone the repository:
+bash
+Copy code
+git clone https://github.com/your-username/spot-locater.git
+Install the necessary dependencies:
+bash
+Copy code
+npm install
+Start the development server:
+bash
+Copy code
+npm start
+
+## Usage
+Type the name of a city in the search bar and hit "Enter" to see the map zoom into the location and display the top 10 tourist spots.
+The application will fetch a relevant image of the city and display it as the background, with a smooth gradient that blends into the map.
+Contributing
+Contributions are welcome! If you have suggestions for improving the project, feel free to fork the repository and submit a pull request.
+
+License
+This project is licensed under the MIT License.
+
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
