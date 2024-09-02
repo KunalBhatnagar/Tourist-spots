@@ -11,7 +11,7 @@ Spot Locater is a dynamic web application built with React that allows users to 
 ## Technologies Used
 -> React: For building the user interface and managing state.
 -> Leaflet: For interactive map rendering and location zoom functionality.
-> OpenTripMap API: To retrieve city coordinates and top tourist spots.
+-> OpenTripMap API: To retrieve city coordinates and top tourist spots.
 -> Unsplash API: To fetch high-quality images of the searched city.
 -> CSS: Custom styling for a modern, clean, and responsive design.
 
