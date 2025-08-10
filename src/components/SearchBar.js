@@ -1,7 +1,7 @@
-// src/components/SearchBar.js
 import React, { useState } from 'react';
 
-const SearchBar = ({ onSearch }) => {
+// Receive onGeolocate as a prop
+const SearchBar = ({ onSearch, onGeolocate, history }) => {
   const [inputValue, setInputValue] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
@@ -27,8 +27,19 @@ const SearchBar = ({ onSearch }) => {
 
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
-    // Reset searching state if input is cleared
     if (!e.target.value.trim()) {
+      setIsSearching(false);
+    }
+  };
+
+  // NEW: Handler for the geolocate button
+  const handleGeolocateClick = async () => {
+    setIsSearching(true);
+    try {
+      await onGeolocate();
+    } catch (error) {
+      console.error('Geolocation error:', error);
+    } finally {
       setIsSearching(false);
     }
   };
@@ -54,7 +65,41 @@ const SearchBar = ({ onSearch }) => {
         >
           {isSearching ? 'Searching...' : 'Search'}
         </button>
+        
+        {/* NEW: "Use My Location" button */}
+        <button
+          className="geolocate-button" // Add styling for this class in App.css
+          onClick={handleGeolocateClick}
+          disabled={isSearching}
+          aria-label="Use my current location"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '8px' }}>
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="3"></circle>
+            <line x1="12" y1="1" x2="12" y2="5"></line>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="1" y1="12" x2="5" y2="12"></line>
+            <line x1="19" y1="12" x2="23" y2="12"></line>
+          </svg>
+          Use My Location
+        </button>
       </div>
+      {history && history.length > 0 && (
+        <div className="search-history" style={{ marginTop: '10px', textAlign: 'center' }}>
+          {history.map(city => (
+            <button 
+              key={city}
+              onClick={() => onSearch(city)}
+              style={{ /* add some basic styling */
+                background: 'rgba(255,255,255,0.7)', border: '1px solid #ddd', 
+                borderRadius: '15px', padding: '5px 10px', margin: '2px', cursor: 'pointer'
+              }}
+            >
+              {city}
+            </button>
+          ))}
+        </div>
+      )}
       
       {isSearching && (
         <div className="search-loading">
