@@ -8,24 +8,24 @@ const TouristSpotsPopup = ({ spots, onClose, cityImage, mapUrl, location, onFavo
   // NEW: Ref to store marker instances
   const markersRef = useRef({});
 
-  const getCoordinates = () => {
-    if (location && typeof location.lat === 'number' && typeof location.lng === 'number') {
-      return location;
-    }
-    if (spots && spots.length > 0 && spots[0].coordinates) {
-      const [lng, lat] = spots[0].coordinates;
-      return { lat, lng };
-    }
-    if (mapUrl) {
-      const match = mapUrl.match(/mlat=([^&]+)&mlon=([^&]+)/);
-      if (match) {
-        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-      }
-    }
-    return null;
-  };
-
   useEffect(() => {
+    const getCoordinates = () => {
+      if (location && typeof location.lat === 'number' && typeof location.lng === 'number') {
+        return location;
+      }
+      if (spots && spots.length > 0 && spots[0].coordinates) {
+        const [lng, lat] = spots[0].coordinates;
+        return { lat, lng };
+      }
+      if (mapUrl) {
+        const match = mapUrl.match(/mlat=([^&]+)&mlon=([^&]+)/);
+        if (match) {
+          return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+        }
+      }
+      return null;
+    };
+
     const coordinates = getCoordinates();
     
     if (coordinates && popupMapRef.current && !popupMapInstance.current) {

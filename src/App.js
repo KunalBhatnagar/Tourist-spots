@@ -19,7 +19,7 @@ const App = () => {
   const { isDarkMode, toggleTheme } = useTheme();
   const { favorites, toggleFavorite, isFavorited } = useFavorites();
   const { toasts, addToast, removeToast } = useToast();
-  const { searchCity, loading: searchLoading, error: searchError } = useCitySearch();
+  const { searchCity, error: searchError } = useCitySearch();
   const { spots, loading: spotsLoading, error: spotsError, fetchSpots } = useFetchSpots();
 
   // State
