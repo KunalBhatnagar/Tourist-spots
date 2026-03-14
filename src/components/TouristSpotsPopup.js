@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
+import AttractionCard from './AttractionCard';
 
-const TouristSpotsPopup = ({ spots, onClose, cityImage, mapUrl, location }) => {
+const TouristSpotsPopup = ({ spots, onClose, cityImage, mapUrl, location, onFavorite, isFavorited }) => {
   const popupMapRef = useRef(null);
   const popupMapInstance = useRef(null);
   // NEW: Ref to store marker instances
@@ -193,46 +194,16 @@ const TouristSpotsPopup = ({ spots, onClose, cityImage, mapUrl, location }) => {
                 {spots && spots.length > 0 ? (
                   <div className="attractions-grid">
                     {spots.slice(0, 8).map((spot, index) => (
-                      // NEW: Added event handlers to the attraction card
-                      <div 
-                        key={index} 
-                        className="attraction-card"
-                        onMouseEnter={() => handleAttractionHover(spot.name)}
-                        onMouseLeave={() => handleAttractionLeave(spot.name)}
+                      <AttractionCard
+                        key={spot.id || index}
+                        spot={spot}
+                        onHover={() => handleAttractionHover(spot.name)}
+                        onLeave={() => handleAttractionLeave(spot.name)}
                         onClick={() => handleAttractionClick(spot)}
-                      >
-                        <div className="attraction-header">
-                          <div className="attraction-icon">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                              <circle cx="12" cy="10" r="3"></circle>
-                            </svg>
-                          </div>
-                          <h3 className="attraction-name">{spot.name || 'Unnamed Location'}</h3>
-                          {spot.rating !== 'N/A' && (
-                            <div className="attraction-rating">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                              </svg>
-                              <span>{spot.rating}</span>
-                            </div>
-                          )}
-                        </div>
-                        <p className="attraction-description">
-                          {spot.description && spot.description !== 'No description available' 
-                            ? (spot.description.length > 80 
-                                ? spot.description.substring(0, 80) + '...'
-                                : spot.description)
-                            : 'Explore this amazing location'}
-                        </p>
-                        <div className="attraction-tags">
-                          {spot.description && spot.description.split(',').slice(0, 3).map((tag, tagIndex) => (
-                            <span key={tagIndex} className="attraction-tag">
-                              {tag.trim()}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                        isFavorited={isFavorited ? isFavorited(spot.id) : false}
+                        onFavorite={() => onFavorite && onFavorite(spot)}
+                        location={location}
+                      />
                     ))}
                   </div>
                 ) : (

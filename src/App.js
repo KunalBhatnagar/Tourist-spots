@@ -1,18 +1,37 @@
 import React, { useState, useEffect } from "react";
-import "./App.css"; // Import the CSS file
+import "./App.css";
+import "./styles/modern.css";
 import WorldMap from "./components/Map";
 import SearchBar from "./components/SearchBar";
 import TouristSpotsPopup from "./components/TouristSpotsPopup";
+import ToastNotification, { useToast } from "./components/ToastNotification";
+import FavoritesPanel from "./components/FavoritesPanel";
+import FilterPanel from "./components/FilterPanel";
+import ThemeToggle from "./components/ThemeToggle";
+import SkeletonLoader from "./components/SkeletonLoader";
+import { useTheme } from "./hooks/useTheme";
+import { useFavorites } from "./hooks/useFavorites";
+import { useCitySearch } from "./hooks/useCitySearch";
+import { useFetchSpots } from "./hooks/useFetchSpots";
 
 const App = () => {
-  const [spots, setSpots] = useState([]);
+  // Hooks
+  const { isDarkMode, toggleTheme } = useTheme();
+  const { favorites, toggleFavorite, isFavorited } = useFavorites();
+  const { toasts, addToast, removeToast } = useToast();
+  const { searchCity, loading: searchLoading, error: searchError } = useCitySearch();
+  const { spots, loading: spotsLoading, error: spotsError, fetchSpots } = useFetchSpots();
+
+  // State
   const [showPopup, setShowPopup] = useState(false);
   const [location, setLocation] = useState(null);
   const [cityImage, setCityImage] = useState('');
   const [mapUrl, setMapUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-   const [searchHistory, setSearchHistory] = useState(
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [showFilter, setShowFilter] = useState(false);
+  const [filteredSpots, setFilteredSpots] = useState([]);
+  const [searchHistory, setSearchHistory] = useState(
     () => JSON.parse(localStorage.getItem('searchHistory')) || []
   );
   
@@ -20,166 +39,162 @@ const App = () => {
     return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=${zoom}/${lat}/${lon}`;
   };
 
-  const fetchSpotsAndImageByCoords = async (lat, lon, cityForImage = null) => {
+  const fetchImageByCity = async (city) => {
     try {
-      const generatedMapUrl = generateMapUrl(lat, lon);
-      setMapUrl(generatedMapUrl);
-      setLocation({ lat, lng: lon });
-
-      const imageQuery = cityForImage ? cityForImage : 'travel';
-      const imagePromise = fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(imageQuery)}&client_id=dd3_nxMcHeTI7r8UVI0dFmx5-xCIFetSo63s2iiV93A`)
-        .then(response => response.ok ? response.json() : null)
-        .then(imageData => {
-          const cityImageUrl = imageData?.results?.[0]?.urls?.full || '';
-          setCityImage(cityImageUrl);
-        })
-        .catch(error => {
-          console.warn('Error fetching city image:', error);
-          setCityImage('');
-        });
-
-      const spotsResponse = await fetch(`https://api.opentripmap.com/0.1/en/places/radius?radius=5000&lon=${lon}&lat=${lat}&apikey=5ae2e3f221c38a28845f05b688fe380cc74d18dfc8b7286ddfe46dbb&limit=10`);
-      
-      if (!spotsResponse.ok) {
-        throw new Error(`Failed to fetch tourist spots (${spotsResponse.status})`);
-      }
-      
-      const spotsData = await spotsResponse.json();
-
-      if (!spotsData.features || !Array.isArray(spotsData.features)) {
-        throw new Error('No tourist spots found in this area');
-      }
-
-      const topSpots = spotsData.features
-        .filter(spot => spot.properties && spot.properties.name)
-        .map((spot) => ({
-          name: spot.properties.name,
-          description: spot.properties.kinds || 'No description available',
-          rating: spot.properties.rate || 'N/A',
-          coordinates: spot.geometry?.coordinates
-        }))
-        .slice(0, 10);
-
-      if (topSpots.length === 0) {
-        throw new Error('No named tourist spots found in this area');
-      }
-
-      setSpots(topSpots);
-      
-      await imagePromise;
-      
-      setShowPopup(true);
+      const response = await fetch(
+        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(city)}&per_page=1&client_id=${process.env.REACT_APP_UNSPLASH_CLIENT_ID}`
+      );
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.results?.[0]?.urls?.full || null;
     } catch (err) {
-      console.error('Error fetching spots data:', err);
-      setError(err.message || 'An error occurred while fetching data. Please try again.');
+      console.warn('Error fetching city image:', err);
+      return null;
     }
+  };
+
+  const handleCitySearch = async (city) => {
+    if (!city.trim()) return;
+
+    setIsLoading(true);
+    try {
+      const coords = await searchCity(city);
+      const mapUrl = generateMapUrl(coords.lat, coords.lon);
+      setMapUrl(mapUrl);
+      setLocation({ lat: coords.lat, lng: coords.lon });
+
+      const imageUrl = await fetchImageByCity(city);
+      setCityImage(imageUrl);
+
+      const spots = await fetchSpots(coords.lat, coords.lon);
+      setFilteredSpots(spots);
+      setShowPopup(true);
+
+      setSearchHistory(prevHistory => {
+        const updated = [city, ...prevHistory.filter(c => c.toLowerCase() !== city.toLowerCase())];
+        return updated.slice(0, 5);
+      });
+
+      addToast(`Found ${spots.length} attractions in ${city}!`, 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to search city', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGeolocate = async () => {
+    if (!navigator.geolocation) {
+      addToast('Geolocation not supported', 'error');
+      return;
+    }
+
+    setIsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setLocation({ lat: latitude, lng: longitude });
+        const mapUrl = generateMapUrl(latitude, longitude);
+        setMapUrl(mapUrl);
+        setCityImage('');
+
+        try {
+          const spots = await fetchSpots(latitude, longitude);
+          setFilteredSpots(spots);
+          setShowPopup(true);
+          addToast('Location detected!', 'success');
+        } catch (err) {
+          addToast('Failed to load spots', 'error');
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      () => {
+        addToast('Enable location services to use this feature', 'error');
+        setIsLoading(false);
+      }
+    );
+  };
+
+  const handleApplyFilter = (filterOptions) => {
+    let filtered = [...spots];
+
+    if (filterOptions.categories.length > 0) {
+      filtered = filtered.filter(spot =>
+        filterOptions.categories.some(cat =>
+          spot.description.toLowerCase().includes(cat)
+        )
+      );
+    }
+
+    if (filterOptions.sortBy === 'name') {
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (filterOptions.sortBy === 'distance') {
+      filtered.sort((a, b) => a.distance - b.distance);
+    } else {
+      filtered.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
+    }
+
+    setFilteredSpots(filtered);
+    addToast('Filters applied', 'info');
   };
 
   useEffect(() => {
     localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
   }, [searchHistory]);
 
-
-  const handleSearch = async (city) => {
-    if (!city.trim()) return;
-    
-    setIsLoading(true);
-    setError('');
-    setSpots([]);
-    setShowPopup(false);
-    setCityImage('');
-    
-    try {
-      const response = await fetch(`https://api.opentripmap.com/0.1/en/places/geoname?name=${encodeURIComponent(city)}&apikey=5ae2e3f221c38a28845f05b688fe380cc74d18dfc8b7286ddfe46dbb`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch location data (${response.status})`);
-      }
-      
-      const data = await response.json();
-
-      if (!data || !data.lat || !data.lon) {
-        throw new Error('Location not found. Please try a different city name.');
-      }
-
-      const { lat, lon } = data;
-
-      setSearchHistory(prevHistory => {
-      const updatedHistory = [city, ...prevHistory.filter(c => c.toLowerCase() !== city.toLowerCase())];
-      return updatedHistory.slice(0, 5); // Keep the last 5 searches
-    });
-      
-      await fetchSpotsAndImageByCoords(lat, lon, city);
-
-    } catch (error) {
-      console.error('Error during search:', error);
-      setError(error.message || 'An error occurred while searching. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGeolocate = () => {
-    if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-    setSpots([]);
-    setShowPopup(false);
-    setCityImage('');
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        await fetchSpotsAndImageByCoords(latitude, longitude);
-        setIsLoading(false);
-      },
-      () => {
-        setError('Unable to retrieve your location. Please enable location services and try again.');
-        setIsLoading(false);
-      }
-    );
-  };
-
-  const handleClosePopup = () => {
-    setShowPopup(false);
-  };
-
   return (
     <div className="app-container">
+      {/* Toast Notifications */}
+      <ToastNotification toasts={toasts} removeToast={removeToast} />
+
+      {/* Theme Toggle */}
+      <ThemeToggle isDarkMode={isDarkMode} onToggle={toggleTheme} />
+
+      {/* Action Buttons */}
+      <div className="action-buttons">
+        <button
+          className="action-btn"
+          onClick={() => setShowFilter(!showFilter)}
+          title="Filter spots"
+        >
+          🔍
+        </button>
+        <button
+          className="action-btn"
+          onClick={() => setShowFavorites(!showFavorites)}
+          title={`Favorites (${favorites.length})`}
+        >
+          ❤️
+        </button>
+      </div>
+
+      {/* Header */}
       <div className="spot-locater">Spot Locater</div>
-      
-      <SearchBar onSearch={handleSearch} onGeolocate={handleGeolocate} history={searchHistory} />
-      
-      {error && (
-        <div className="error-message" style={{ 
-          color: 'red', 
-          textAlign: 'center', 
-          padding: '10px',
-          backgroundColor: '#ffebee',
-          border: '1px solid #ffcdd2',
-          borderRadius: '4px',
-          margin: '10px'
-        }}>
-          {error}
+
+      {/* Search Bar */}
+      <SearchBar 
+        onSearch={handleCitySearch} 
+        onGeolocate={handleGeolocate} 
+        history={searchHistory} 
+      />
+
+      {/* Loading State */}
+      {(isLoading || spotsLoading) && (
+        <div className="loading-state">
+          <SkeletonLoader />
         </div>
       )}
-      
-      {isLoading && (
-        <div className="loading-message" style={{ 
-          textAlign: 'center', 
-          padding: '20px',
-          fontSize: '16px'
-        }}>
-          Loading...
+
+      {/* Error Messages */}
+      {(searchError || spotsError) && (
+        <div className="error-message">
+          <span>⚠️</span>
+          <p>{searchError || spotsError}</p>
         </div>
       )}
-      
-      {/* CORRECTION 1: Removed the '!showPopup' condition. 
-          The city image will now stay visible behind the popup. */}
+
+      {/* City Image Background */}
       {cityImage && (
         <div className="city-image-container">
           <img 
@@ -193,21 +208,50 @@ const App = () => {
           />
         </div>
       )}
-      
-      {/* CORRECTION 2: Wrapped the WorldMap in a div that hides it when the popup is active. */}
+
+      {/* Map */}
       <div style={{ display: showPopup ? 'none' : 'block' }}>
         <WorldMap location={location} />
       </div>
-      
+
+      {/* Popups and Panels */}
       {showPopup && (
         <TouristSpotsPopup 
-          spots={spots} 
-          onClose={handleClosePopup} 
+          spots={filteredSpots.length > 0 ? filteredSpots : spots}
+          onClose={() => setShowPopup(false)}
           mapUrl={mapUrl}
           cityImage={cityImage}
           location={location}
+          onFavorite={toggleFavorite}
+          isFavorited={isFavorited}
         />
       )}
+
+      <FavoritesPanel
+        favorites={favorites}
+        onRemove={(id) => {
+          const spot = favorites.find(s => s.id === id);
+          if (spot) toggleFavorite(spot);
+        }}
+        onSelect={(spot) => {
+          if (spot.coordinates) {
+            const [lng, lat] = spot.coordinates;
+            setLocation({ lat, lng });
+            setMapUrl(generateMapUrl(lat, lng));
+            setCityImage('');
+            setShowPopup(true);
+            setShowFavorites(false);
+          }
+        }}
+        isOpen={showFavorites}
+        onClose={() => setShowFavorites(false)}
+      />
+
+      <FilterPanel
+        onFilter={handleApplyFilter}
+        isOpen={showFilter}
+        onClose={() => setShowFilter(false)}
+      />
     </div>
   );
 };

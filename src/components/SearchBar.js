@@ -68,7 +68,7 @@ const SearchBar = ({ onSearch, onGeolocate, history }) => {
         
         {/* NEW: "Use My Location" button */}
         <button
-          className="geolocate-button" // Add styling for this class in App.css
+          className="geolocate-button"
           onClick={handleGeolocateClick}
           disabled={isSearching}
           aria-label="Use my current location"
@@ -90,9 +90,13 @@ const SearchBar = ({ onSearch, onGeolocate, history }) => {
             <button 
               key={city}
               onClick={() => onSearch(city)}
-              style={{ /* add some basic styling */
-                background: 'rgba(255,255,255,0.7)', border: '1px solid #ddd', 
-                borderRadius: '15px', padding: '5px 10px', margin: '2px', cursor: 'pointer'
+              style={{
+                background: 'rgba(255,255,255,0.7)', 
+                border: '1px solid #ddd', 
+                borderRadius: '15px', 
+                padding: '5px 10px', 
+                margin: '2px', 
+                cursor: 'pointer'
               }}
             >
               {city}
